@@ -35,26 +35,43 @@
 
       <z-card class="border-slate-800 bg-slate-900/70 text-slate-100 shadow-xl">
         <z-card-header class="border-b border-slate-800">
-          <z-card-title class="text-white">Modelo do reservatório</z-card-title>
+          <z-card-title class="text-white">Tamanho da caixa d'água</z-card-title>
           <z-card-description class="mt-1 text-slate-400">
-            Selecione o modelo para atualizar o perfil técnico exibido na página inicial.
+            Selecione a capacidade e salve a alteração no dispositivo.
           </z-card-description>
         </z-card-header>
         <z-card-content class="pt-5">
-          <label for="tank-model" class="mb-2 block text-sm font-medium text-slate-200">Modelo em operação</label>
+          <label for="tank-model" class="mb-2 block text-sm font-medium text-slate-200">
+            Capacidade da caixa d'água
+          </label>
           <select
             id="tank-model"
             class="h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none transition-colors focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30"
-            [value]="selectedTank().cap"
+            [value]="pendingTankCapacity() ?? selectedTank().cap"
+            [disabled]="loadingStatus() || savingTank()"
             (change)="selectTank($event)"
           >
             @for (tank of tankSpecs; track tank.cap) {
-            <option [value]="tank.cap">
-              {{ tank.cap.toLocaleString('pt-BR') }} L — Altura: {{ tank.a.toLocaleString('pt-BR', {
-              minimumFractionDigits: 2 }) }} m — Cód: {{ tank.code }}
-            </option>
+            <option [value]="tank.cap">{{ tank.cap.toLocaleString('pt-BR') }} L</option>
             }
           </select>
+          <button
+            type="button"
+            z-button
+            zType="outline"
+            class="mt-4 w-full border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
+            [zLoading]="savingTank()"
+            [disabled]="
+              loadingStatus() ||
+              savingTank() ||
+              pendingTankCapacity() === null ||
+              pendingTankCapacity() === selectedTank().cap
+            "
+            (click)="saveTankCapacity()"
+          >
+            <ng-icon name="lucideSave" size="18" aria-hidden="true" />
+            Salvar tamanho da caixa
+          </button>
         </z-card-content>
       </z-card>
 

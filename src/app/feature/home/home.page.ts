@@ -4,6 +4,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
 import { firstValueFrom } from 'rxjs';
 
+import { HeaderComponent } from './components/header/header.component';
+import { TankVisualizationComponent } from './components/tank-visualization/tank-visualization.component';
+
 import { TANK_SPECS } from '@/core/consts/tank.const';
 import type { DeviceStatus } from '@/core/models/device-config.models';
 import type { PumpMode } from '@/core/models/tank.models';
@@ -11,15 +14,11 @@ import { DeviceApiService } from '@/core/services/device-api.service';
 import { TankSelectionService } from '@/core/services/tank-selection.service';
 import { ZardSonnerService } from '@/shared/components/sonner';
 
-import { HeaderComponent } from './components/header/header.component';
-import { TankControlsComponent } from './components/tank-controls/tank-controls.component';
-import { TankVisualizationComponent } from './components/tank-visualization/tank-visualization.component';
-
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.css'],
-  imports: [IonContent, TankVisualizationComponent, HeaderComponent, TankControlsComponent],
+  imports: [IonContent, TankVisualizationComponent, HeaderComponent],
 })
 export class HomePage implements OnInit, OnDestroy {
   private readonly api = inject(DeviceApiService);

@@ -59,6 +59,7 @@ export class ConfigPage implements OnInit {
 
   readonly tankSpecs = TANK_SPECS;
   readonly selectedTank = this.tankSelection.selectedModel;
+  readonly pendingTankCapacity = signal<number | null>(null);
   readonly configurationFields: ConfigurationField[] = [
     {
       key: 'gatilho_ligar_pct',
@@ -114,6 +115,7 @@ export class ConfigPage implements OnInit {
 
   readonly loadingStatus = signal(false);
   readonly savingFields = signal(new Set<ConfigurationFieldKey>());
+  readonly savingTank = signal(false);
   readonly savingWifi = signal(false);
   readonly statusError = signal<string | null>(null);
 
@@ -129,8 +131,30 @@ export class ConfigPage implements OnInit {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
 
-    const selected = this.tankSpecs.find((spec) => spec.cap === Number(target.value));
-    if (selected) this.tankSelection.selectedModel.set(selected);
+    const capacity = Number(target.value);
+    if (this.tankSpecs.some((tank) => tank.cap === capacity)) {
+      this.pendingTankCapacity.set(capacity === this.selectedTank().cap ? null : capacity);
+    }
+  }
+
+  async saveTankCapacity(): Promise<void> {
+    const capacity = this.pendingTankCapacity();
+    const selected = this.tankSpecs.find((spec) => spec.cap === capacity);
+    if (!selected || this.savingTank()) return;
+
+    this.savingTank.set(true);
+    try {
+      await firstValueFrom(this.api.updateConfiguration({ capacidade_litros: selected.cap }));
+      this.tankSelection.selectedModel.set(selected);
+      this.pendingTankCapacity.set(null);
+      this.sonner.success('Tamanho da caixa d’água atualizado.');
+    } catch (error: unknown) {
+      this.sonner.error('Não foi possível atualizar o tamanho da caixa d’água.', {
+        description: this.getErrorMessage(error, 'salvar o tamanho da caixa d’água'),
+      });
+    } finally {
+      this.savingTank.set(false);
+    }
   }
 
   async loadCurrentConfiguration(): Promise<void> {
@@ -140,6 +164,11 @@ export class ConfigPage implements OnInit {
     try {
       const status = await firstValueFrom(this.api.getStatus());
       this.configurationForm.patchValue(status.configuracoes);
+      const selectedTank = this.tankSpecs.find((tank) => tank.cap === status.configuracoes.capacidade_litros);
+      if (selectedTank) {
+        this.tankSelection.selectedModel.set(selectedTank);
+        this.pendingTankCapacity.set(null);
+      }
     } catch (error: unknown) {
       this.statusError.set(this.getErrorMessage(error, 'carregar as configurações'));
     } finally {
