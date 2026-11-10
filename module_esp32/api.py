@@ -1,43 +1,44 @@
-import uasyncio as asyncio
 import json
+import uasyncio as asyncio
+
 
 class ServidorAPI:
-    def __init__(self, config_mgr, estado_tanque, callback_bomba=None, porta=80):
-        self.cfg = config_mgr
-        self.estado = estado_tanque
+    MAX_CORPO_BYTES = 2048
+
+    def __init__(self, config, estado, callback_bomba=None, reconectar_rede=None, porta=80):
+        self.cfg = config
+        self.estado = estado
         self.porta = porta
         self.callback_bomba = callback_bomba
+        self.reconectar_rede = reconectar_rede
 
-    async def _enviar_resposta(self, writer, status_code, corpo_dict=None):
-        try:
-            if corpo_dict is not None:
-                corpo = json.dumps(corpo_dict)
-                dados_corpo = corpo.encode("utf-8")
-                headers_conteudo = (
-                    "Content-Type: application/json; charset=utf-8\r\n"
-                    f"Content-Length: {len(dados_corpo)}\r\n"
-                )
-            else:
-                corpo = ""
-                dados_corpo = b""
-                headers_conteudo = "Content-Length: 0\r\n"
-
-            # Cabeçalhos completos com suporte a Private Network e CORS irrestrito
-            cabecalho = (
-                f"HTTP/1.1 {status_code}\r\n"
-                f"{headers_conteudo}"
-                "Access-Control-Allow-Origin: *\r\n"
-                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-                "Access-Control-Allow-Headers: *\r\n"
-                "Access-Control-Allow-Private-Network: true\r\n"
-                "Access-Control-Max-Age: 86400\r\n"
-                "Connection: close\r\n\r\n"
+    async def _enviar_resposta(self, writer, status, corpo=None):
+        if corpo is None:
+            dados_corpo = b""
+            headers_conteudo = "Content-Length: 0\r\n"
+        else:
+            dados_corpo = json.dumps(corpo).encode("utf-8")
+            headers_conteudo = (
+                "Content-Type: application/json; charset=utf-8\r\n"
+                "Content-Length: {}\r\n".format(len(dados_corpo))
             )
 
+        cabecalho = (
+            "HTTP/1.1 {}\r\n".format(status)
+            + headers_conteudo
+            + "Access-Control-Allow-Origin: *\r\n"
+            + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+            + "Access-Control-Allow-Headers: *\r\n"
+            + "Access-Control-Allow-Private-Network: true\r\n"
+            + "Access-Control-Max-Age: 86400\r\n"
+            + "Connection: close\r\n\r\n"
+        )
+
+        try:
             writer.write(cabecalho.encode("utf-8") + dados_corpo)
             await writer.drain()
-        except Exception as e:
-            print("Erro ao enviar resposta:", e)
+        except OSError as erro:
+            print("Falha ao enviar resposta HTTP:", erro)
         finally:
             try:
                 writer.close()
@@ -45,115 +46,151 @@ class ServidorAPI:
             except Exception:
                 pass
 
-    async def _ler_exato(self, reader, n_bytes):
-        buffer = b""
-        # Leitura com proteção contra bloqueio
-        while len(buffer) < n_bytes:
-            pedaco = await reader.read(n_bytes - len(buffer))
-            if not pedaco:
-                break
-            buffer += pedaco
-        return buffer
+    async def _ler_corpo(self, reader, tamanho):
+        partes = []
+        restante = tamanho
+        while restante:
+            parte = await reader.read(restante)
+            if not parte:
+                raise ValueError("corpo da requisição incompleto")
+            partes.append(parte)
+            restante -= len(parte)
+        return b"".join(partes)
 
     async def _handler(self, reader, writer):
         try:
-            linha_req = await reader.readline()
-            if not linha_req:
-                writer.close()
-                await writer.wait_closed()
-                return
-
-            requisicao = linha_req.decode().strip()
-            partes = requisicao.split()
-            if len(partes) < 2:
-                writer.close()
-                await writer.wait_closed()
+            linha = await reader.readline()
+            partes = linha.decode("utf-8").strip().split()
+            if len(partes) != 3:
+                await self._enviar_resposta(writer, "400 Bad Request", {"erro": "Linha HTTP inválida"})
                 return
 
             metodo, rota = partes[0].upper(), partes[1]
-
-            # Consome todos os cabeçalhos até encontrar a linha em branco
             tamanho_corpo = 0
             while True:
-                linha_hdr = await reader.readline()
-                if not linha_hdr or linha_hdr == b"\r\n" or linha_hdr == b"\n":
+                linha_header = await reader.readline()
+                if not linha_header or linha_header in (b"\r\n", b"\n"):
                     break
-                texto_hdr = linha_hdr.decode().lower()
-                if "content-length:" in texto_hdr:
+                texto_header = linha_header.decode("utf-8").strip()
+                if ":" not in texto_header:
+                    continue
+                nome, valor = texto_header.split(":", 1)
+                if nome.lower() == "content-length":
                     try:
-                        tamanho_corpo = int(texto_hdr.split(":")[1].strip())
+                        tamanho_corpo = int(valor.strip())
                     except ValueError:
-                        tamanho_corpo = 0
+                        await self._enviar_resposta(
+                            writer, "400 Bad Request", {"erro": "Content-Length inválido"}
+                        )
+                        return
 
-            # 1. TRATA PRE-FLIGHT (OPTIONS)
             if metodo == "OPTIONS":
-                await self._enviar_resposta(writer, "204 No Content", corpo_dict=None)
+                await self._enviar_resposta(writer, "204 No Content")
                 return
 
-            # 2. ROTA: GET /api/status
             if metodo == "GET" and rota == "/api/status":
-                dados_resposta = {
+                dados = {
                     "nivel_atual_pct": self.estado.get("nivel", 0),
                     "bomba_ligada": self.estado.get("bomba_ligada", False),
-                    "configuracoes": self.cfg.obter()
+                    "configuracoes": self.cfg.obter_publica(),
                 }
-                await self._enviar_resposta(writer, "200 OK", dados_resposta)
+                await self._enviar_resposta(writer, "200 OK", dados)
                 return
 
-            # 3. TRATA MÉTODOS POST
-            if metodo == "POST":
-                payload = {}
-                if tamanho_corpo > 0:
-                    try:
-                        corpo_bytes = await self._ler_exato(reader, tamanho_corpo)
-                        payload = json.loads(corpo_bytes.decode("utf-8").strip())
-                    except Exception as e:
-                        print("Erro no parse do JSON:", e)
-                        await self._enviar_resposta(writer, "400 Bad Request", {"erro": f"JSON invalido: {str(e)}"})
-                        return
-                else:
-                    await self._enviar_resposta(writer, "400 Bad Request", {"erro": "Corpo da requisicao vazio"})
-                    return
+            if metodo != "POST" or rota not in ("/api/config", "/api/bomba"):
+                await self._enviar_resposta(writer, "404 Not Found", {"erro": "Rota não encontrada"})
+                return
 
-                # ROTA: POST /api/config
-                if rota == "/api/config":
-                    self.cfg.atualizar(payload)
-                    await self._enviar_resposta(writer, "200 OK", {
-                        "sucesso": True,
-                        "novas_configs": self.cfg.obter()
-                    })
-                    return
+            if tamanho_corpo <= 0:
+                await self._enviar_resposta(writer, "400 Bad Request", {"erro": "Corpo da requisição vazio"})
+                return
+            if tamanho_corpo > self.MAX_CORPO_BYTES:
+                await self._enviar_resposta(writer, "413 Payload Too Large", {"erro": "Corpo muito grande"})
+                return
 
-                # ROTA: POST /api/bomba
-                elif rota == "/api/bomba":
-                    if "ligar" not in payload:
-                        await self._enviar_resposta(writer, "400 Bad Request", {"erro": "Chave 'ligar' ausente"})
-                        return
-
-                    estado_desejado = bool(payload["ligar"])
-                    self.estado["bomba_ligada"] = estado_desejado
-
-                    if self.callback_bomba:
-                        self.callback_bomba(estado_desejado)
-
-                    await self._enviar_resposta(writer, "200 OK", {
-                        "sucesso": True,
-                        "mensagem": f"Bomba {'ligada' if estado_desejado else 'desligada'}",
-                        "bomba_ligada": self.estado["bomba_ligada"]
-                    })
-                    return
-
-            # Se não casou com nenhuma rota
-            await self._enviar_resposta(writer, "404 Not Found", {"erro": "Rota nao encontrada"})
-
-        except Exception as e:
-            print("Erro critico no handler HTTP:", e)
             try:
-                writer.close()
-                await writer.wait_closed()
-            except Exception:
-                pass
+                corpo = await self._ler_corpo(reader, tamanho_corpo)
+                payload = json.loads(corpo.decode("utf-8"))
+            except (ValueError, UnicodeError) as erro:
+                await self._enviar_resposta(writer, "400 Bad Request", {"erro": "JSON inválido: " + str(erro)})
+                return
+
+            if not isinstance(payload, dict):
+                await self._enviar_resposta(writer, "400 Bad Request", {"erro": "O JSON deve ser um objeto"})
+                return
+
+            if rota == "/api/config":
+                await self._atualizar_configuracao(writer, payload)
+                return
+
+            await self._acionar_bomba(writer, payload)
+        except Exception as erro:
+            print("Erro ao processar requisição HTTP:", erro)
+            try:
+                await self._enviar_resposta(writer, "500 Internal Server Error", {"erro": "Erro interno"})
+            except Exception as erro_resposta:
+                print("Falha ao responder erro HTTP:", erro_resposta)
+
+    async def _atualizar_configuracao(self, writer, payload):
+        alterou_wifi = "SSID_ROTEADOR" in payload or "SENHA_ROTEADOR" in payload
+        try:
+            self.cfg.atualizar(payload)
+            configuracoes = self.cfg.obter_publica()
+        except ValueError as erro:
+            await self._enviar_resposta(writer, "400 Bad Request", {"erro": str(erro)})
+            return
+        except OSError as erro:
+            print("Falha ao persistir configuração:", erro)
+            await self._enviar_resposta(
+                writer, "500 Internal Server Error", {"erro": "Não foi possível salvar a configuração"}
+            )
+            return
+
+        await self._enviar_resposta(
+            writer,
+            "200 OK",
+            {"sucesso": True, "novas_configs": configuracoes},
+        )
+        if alterou_wifi and self.reconectar_rede is not None:
+            asyncio.create_task(self._reconectar_depois_da_resposta())
+
+    async def _reconectar_depois_da_resposta(self):
+        await asyncio.sleep(1)
+        try:
+            await self.reconectar_rede()
+        except Exception as erro:
+            print("Falha ao reconectar à rede após atualizar Wi-Fi:", erro)
+
+    async def _acionar_bomba(self, writer, payload):
+        if "ligar" not in payload or not isinstance(payload["ligar"], bool):
+            await self._enviar_resposta(
+                writer, "400 Bad Request", {"erro": "O campo 'ligar' deve ser true ou false"}
+            )
+            return
+
+        ligar = payload["ligar"]
+        try:
+            if self.callback_bomba is not None:
+                self.callback_bomba(ligar)
+            else:
+                self.estado["bomba_ligada"] = ligar
+        except Exception as erro:
+            print("Falha ao acionar a bomba:", erro)
+            await self._enviar_resposta(
+                writer, "500 Internal Server Error", {"erro": "Não foi possível acionar a bomba"}
+            )
+            return
+
+        await self._enviar_resposta(
+            writer,
+            "200 OK",
+            {
+                "sucesso": True,
+                "mensagem": "Bomba ligada" if ligar else "Bomba desligada",
+                "bomba_ligada": self.estado.get("bomba_ligada", ligar),
+            },
+        )
 
     async def iniciar(self):
         await asyncio.start_server(self._handler, "0.0.0.0", self.porta)
-        print(f"API REST ouvindo na porta {self.porta}")
+        print("API REST ouvindo na porta", self.porta)
