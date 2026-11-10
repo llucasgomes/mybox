@@ -17,6 +17,7 @@ export class TankVisualizationComponent {
   readonly capacity = input.required<number>();
   readonly level = input.required<number>();
   readonly pumpMode = input.required<PumpMode>();
+  readonly manualControl = input.required<boolean>();
   readonly canControl = input.required<boolean>();
   readonly pumpBusy = input.required<boolean>();
   readonly showAnnotations = input.required<boolean>();

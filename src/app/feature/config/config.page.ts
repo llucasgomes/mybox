@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { OnInit } from '@angular/core';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular';
@@ -9,7 +9,7 @@ import { lucideLoaderCircle, lucideSave, lucideWifi } from '@ng-icons/lucide';
 import { firstValueFrom } from 'rxjs';
 
 import { TANK_SPECS } from '@/core/consts/tank.const';
-import type { DeviceConfiguration } from '@/core/models/device-config.models';
+import type { DeviceConfiguration, DeviceStatus } from '@/core/models/device-config.models';
 import { DeviceApiService } from '@/core/services/device-api.service';
 import { TankSelectionService } from '@/core/services/tank-selection.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -28,7 +28,15 @@ interface ConfigurationField {
 
 type ConfigurationFieldKey = Exclude<
   keyof DeviceConfiguration,
-  'capacidade_litros' | 'SSID_ROTEADOR' | 'SENHA_ROTEADOR'
+  | 'capacidade_litros'
+  | 'controle_manual'
+  | 'SSID_ROTEADOR'
+  | 'SENHA_ROTEADOR'
+  | 'IP_FIXO'
+  | 'MASCARA'
+  | 'GATEWAY'
+  | 'DNS'
+  | 'NOME_AP'
 >;
 
 @Component({
@@ -59,6 +67,22 @@ export class ConfigPage implements OnInit {
 
   readonly tankSpecs = TANK_SPECS;
   readonly selectedTank = this.tankSelection.selectedModel;
+  readonly apiBaseUrlInput = signal(this.api.apiBaseUrl);
+  readonly apiTokenInput = signal(this.api.apiToken);
+  readonly deviceStatus = signal<DeviceStatus | null>(null);
+  readonly testedConnection = signal<DeviceStatus | null>(null);
+  readonly testingConnection = signal(false);
+  readonly savingControlMode = signal(false);
+  readonly manualControl = signal(false);
+  readonly canConfirmNetwork = computed(() => {
+    const status = this.testedConnection();
+    if (!status?.rede?.ip_sta || !status.rede.ap_ativo) return false;
+    try {
+      return new URL(this.apiBaseUrlInput()).hostname === status.rede.ip_sta;
+    } catch {
+      return false;
+    }
+  });
   readonly pendingTankCapacity = signal<number | null>(null);
   readonly configurationFields: ConfigurationField[] = [
     {
@@ -163,12 +187,7 @@ export class ConfigPage implements OnInit {
 
     try {
       const status = await firstValueFrom(this.api.getStatus());
-      this.configurationForm.patchValue(status.configuracoes);
-      const selectedTank = this.tankSpecs.find((tank) => tank.cap === status.configuracoes.capacidade_litros);
-      if (selectedTank) {
-        this.tankSelection.selectedModel.set(selectedTank);
-        this.pendingTankCapacity.set(null);
-      }
+      this.applyStatus(status);
     } catch (error: unknown) {
       this.statusError.set(this.getErrorMessage(error, 'carregar as configurações'));
     } finally {
@@ -206,13 +225,98 @@ export class ConfigPage implements OnInit {
     this.savingWifi.set(true);
     try {
       await firstValueFrom(this.api.updateWifi(this.wifiForm.getRawValue()));
-      this.sonner.success('Dados do Wi-Fi enviados para o dispositivo.');
+      this.sonner.success('Wi-Fi enviado. O ponto de acesso ficará ativo até você confirmar o novo IP.');
     } catch (error: unknown) {
       this.sonner.error('Não foi possível atualizar o Wi-Fi.', {
         description: this.getErrorMessage(error, 'salvar os dados do Wi-Fi'),
       });
     } finally {
       this.savingWifi.set(false);
+    }
+  }
+
+  updateApiBaseUrl(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) {
+      this.apiBaseUrlInput.set(target.value);
+      this.testedConnection.set(null);
+    }
+  }
+
+  updateApiToken(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) {
+      this.apiTokenInput.set(target.value);
+      this.testedConnection.set(null);
+    }
+  }
+
+  async testAndSaveConnection(): Promise<void> {
+    if (this.testingConnection()) return;
+
+    this.testingConnection.set(true);
+    this.statusError.set(null);
+    try {
+      const baseUrl = this.api.normalizeApiBaseUrl(this.apiBaseUrlInput());
+      const token = this.apiTokenInput().trim();
+      const status = await firstValueFrom(this.api.getStatusAt(baseUrl, token));
+      this.api.saveConnection(baseUrl, token);
+      this.apiBaseUrlInput.set(baseUrl);
+      this.apiTokenInput.set(token);
+      this.applyStatus(status);
+      this.testedConnection.set(status);
+      this.sonner.success('Conexão validada e salva neste dispositivo.');
+    } catch (error: unknown) {
+      this.testedConnection.set(null);
+      this.sonner.error('Não foi possível validar a conexão com a API.', {
+        description: this.getErrorMessage(error, 'validar o endereço e a chave da API'),
+      });
+    } finally {
+      this.testingConnection.set(false);
+    }
+  }
+
+  async confirmNetworkTransition(): Promise<void> {
+    if (!this.canConfirmNetwork() || this.testingConnection()) return;
+
+    this.testingConnection.set(true);
+    try {
+      await firstValueFrom(this.api.confirmarRede());
+      this.testedConnection.update((status) =>
+        status?.rede ? { ...status, rede: { ...status.rede, ap_ativo: false, ip_ap: null } } : status,
+      );
+      this.sonner.success('Troca confirmada. O ponto de acesso foi desativado.');
+    } catch (error: unknown) {
+      this.sonner.error('Não foi possível confirmar a nova conexão.', {
+        description: this.getErrorMessage(error, 'confirmar a conexão pelo Wi-Fi do roteador'),
+      });
+    } finally {
+      this.testingConnection.set(false);
+    }
+  }
+
+  async setManualControl(event: Event): Promise<void> {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || this.savingControlMode()) return;
+
+    const previousValue = this.manualControl();
+    const nextValue = target.checked;
+    this.manualControl.set(nextValue);
+    this.savingControlMode.set(true);
+    try {
+      await firstValueFrom(this.api.updateConfiguration({ controle_manual: nextValue }));
+      this.sonner.success(
+        nextValue
+          ? 'Modo manual ativado. A bomba pode ser comandada pela tela inicial.'
+          : 'Modo automático ativado. Os gatilhos controlam a bomba.',
+      );
+    } catch (error: unknown) {
+      this.manualControl.set(previousValue);
+      this.sonner.error('Não foi possível alterar o modo de controle.', {
+        description: this.getErrorMessage(error, 'salvar o modo de controle'),
+      });
+    } finally {
+      this.savingControlMode.set(false);
     }
   }
 
@@ -223,6 +327,18 @@ export class ConfigPage implements OnInit {
     if (error instanceof HttpErrorResponse) {
       return `A API respondeu com o erro ${error.status}.`;
     }
+    if (error instanceof Error) return error.message;
     return `Ocorreu um erro inesperado ao tentar ${action}.`;
+  }
+
+  private applyStatus(status: DeviceStatus): void {
+    this.deviceStatus.set(status);
+    this.configurationForm.patchValue(status.configuracoes);
+    this.manualControl.set(status.configuracoes.controle_manual);
+    const selectedTank = this.tankSpecs.find((tank) => tank.cap === status.configuracoes.capacidade_litros);
+    if (selectedTank) {
+      this.tankSelection.selectedModel.set(selectedTank);
+      this.pendingTankCapacity.set(null);
+    }
   }
 }

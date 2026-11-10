@@ -20,24 +20,44 @@ Os módulos continuam na raiz para manter simples o carregamento de imports no M
 
 ## Configuração inicial
 
-No primeiro boot, `config_manager.py` cria `config.json` com valores padrão. Configure
-SSID/senha pela rota `/api/config`; depois da resposta, o dispositivo tenta reconectar.
-Se a conexão não estiver configurada ou falhar, ele inicia a rede aberta `ESP_Tanque`.
-O IP de contingência depende da configuração de rede do próprio firmware.
+Antes de enviar o firmware, copie `device_secrets.example.py` para
+`device_secrets.py` e defina um SSID, uma senha WPA2 exclusiva (mínimo de 12 caracteres) e
+uma chave aleatória para a API (mínimo de 32 caracteres). O firmware não inicia com os
+valores de exemplo. Nunca
+versione `device_secrets.py`.
+
+No primeiro boot, `config_manager.py` cria `config.json` com valores padrão e a placa
+inicia seu ponto de acesso protegido. Configure SSID/senha do roteador pela rota
+`/api/config`; depois da resposta, o dispositivo conecta à rede mantendo o ponto de acesso
+ativo. A API publica ambos os endereços em `/api/status`. Conecte o celular à mesma rede do
+roteador, informe e teste `http://<IP mostrado no OLED>/api` no app e, somente após a
+validação, confirme a troca para desativar o ponto de acesso.
+
+No computador, uma chave pode ser gerada com
+`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`. Use o resultado apenas no
+arquivo local do dispositivo e no campo de chave do app; não o inclua em capturas, logs ou
+no repositório.
 
 O arquivo `config.json` contém credenciais e deve permanecer apenas no dispositivo, fora
-do controle de versão. A senha Wi-Fi é removida da resposta de `/api/status`.
+do controle de versão. A senha Wi-Fi é removida das respostas da API. Todas as rotas,
+exceto o preflight CORS, exigem `X-API-Key`.
 
 ## Comportamento atual
 
 - O nível ainda é simulado em passos de 10 pontos percentuais; não há leitura ultrassônica.
 - A simulação aumenta com a bomba ligada e diminui com ela desligada.
 - O controle automático liga/desliga nos percentuais configurados.
-- O comando manual altera diretamente o relé. Na próxima avaliação, os gatilhos automáticos
-  continuam valendo; por isso, um comando pode ser revertido se o nível já estiver além do
-  respectivo limite.
-- No ponto de acesso aberto, não há autenticação na API. Use somente em ambiente confiável
-  e defina uma política de senha/autorização antes de expor o dispositivo a outras redes.
+- O modo manual desabilita o controle por gatilhos; a bomba só é comandada pela API.
+- O modo manual é volátil: cada reinicialização volta ao modo automático.
+- Ao retornar ao modo automático, os gatilhos voltam a controlar o relé.
+
+## Limites de segurança
+
+A chave de API é enviada por HTTP sem criptografia. Ela reduz acesso acidental, mas não
+protege contra alguém capaz de observar o tráfego na rede local. Não exponha a API à
+internet nem use esta solução como substituta de TLS em uma rede não confiável. CORS não é
+autenticação. O ponto de acesso usa WPA2-PSK e a senha deve ser exclusiva por instalação.
+O app guarda a chave no armazenamento local do navegador/dispositivo.
 
 ## Implantação e validação
 

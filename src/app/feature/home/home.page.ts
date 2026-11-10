@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { OnDestroy, OnInit } from '@angular/core';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
 import { firstValueFrom } from 'rxjs';
 
@@ -25,6 +25,15 @@ export class HomePage implements OnInit, OnDestroy {
   private readonly sonner = inject(ZardSonnerService);
   private readonly tankSelection = inject(TankSelectionService);
   private statusRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private initialized = false;
+  private lastRefreshVersion = 0;
+  private readonly refreshEffect = effect(() => {
+    const version = this.api.statusRefreshVersion();
+    if (this.initialized && version !== this.lastRefreshVersion) {
+      this.lastRefreshVersion = version;
+      void this.loadStatus();
+    }
+  });
 
   readonly selectedModel = this.tankSelection.selectedModel;
   readonly deviceStatus = signal<DeviceStatus | null>(null);
@@ -34,6 +43,7 @@ export class HomePage implements OnInit, OnDestroy {
   readonly showAnnotations = signal(true);
   readonly waterLevelPct = computed(() => this.deviceStatus()?.nivel_atual_pct ?? 0);
   readonly pumpMode = computed<PumpMode>(() => (this.deviceStatus()?.bomba_ligada ? 'PUMPING' : 'STANDBY'));
+  readonly manualControl = computed(() => this.deviceStatus()?.configuracoes.controle_manual ?? false);
   readonly tankCapacity = computed(
     () => this.deviceStatus()?.configuracoes.capacidade_litros ?? this.selectedModel().cap,
   );
@@ -59,6 +69,8 @@ export class HomePage implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.initialized = true;
+    this.lastRefreshVersion = this.api.statusRefreshVersion();
     void this.loadStatus();
   }
 

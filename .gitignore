@@ -13,6 +13,7 @@ $RECYCLE.BIN/
 log.txt
 module_esp32/config.json
 module_esp32/config.json.tmp
+module_esp32/device_secrets.py
 __pycache__/
 *.py[cod]
 

@@ -22,6 +22,12 @@
 - Capacidade: seletor em litros e ação explícita para salvar.
 - Parâmetros: controles numéricos com faixa/validação e salvamento por campo.
 - Wi-Fi: campos SSID e senha enviados juntos.
+- Acesso à API: endereço base e chave são testados antes de salvar localmente; o botão de
+  confirmação da rede só aparece se o host testado corresponder ao IP STA informado.
+- Modo de controle: switch acessível permite selecionar automático/manual e fornece
+  feedback de salvamento.
+- A tela inicial só mostra controles da bomba no modo manual; em automático, mostra o
+  estado do modo e os gatilhos.
 - A senha remota existente não deve ser carregada para um campo ou exposta na interface.
 - Exibir estados de carregamento, salvamento, validação e falha.
 

@@ -13,6 +13,7 @@ class ConfigManager:
         "delay_leitura_s": 15,
         "gatilho_ligar_pct": 30,
         "gatilho_desligar_pct": 100,
+        "controle_manual": False,
         "dist_sensor_cheio_cm": 20,
         "dist_sensor_vazio_cm": 120,
         "capacidade_litros": 500,
@@ -27,6 +28,7 @@ class ConfigManager:
         "capacidade_litros": (1, 100000),
     }
     CAMPOS_REDE = ("IP_FIXO", "MASCARA", "GATEWAY", "DNS")
+    CAMPOS_TRANSITORIOS = ("controle_manual",)
 
     def __init__(self):
         self.dados = self._carregar()
@@ -50,7 +52,7 @@ class ConfigManager:
 
         dados = dict(self.CONFIG_PADRAO)
         for campo, valor in salvos.items():
-            if campo not in self.CONFIG_PADRAO:
+            if campo not in self.CONFIG_PADRAO or campo in self.CAMPOS_TRANSITORIOS:
                 continue
             try:
                 dados[campo] = self._validar_campo(campo, valor)
@@ -65,6 +67,11 @@ class ConfigManager:
         return dados
 
     def _validar_campo(self, campo, valor):
+        if campo in self.CAMPOS_TRANSITORIOS:
+            if not isinstance(valor, bool):
+                raise ValueError("deve ser true ou false")
+            return valor
+
         if campo in self.LIMITES_NUMERICOS:
             if isinstance(valor, bool) or not isinstance(valor, int):
                 raise ValueError("deve ser um número inteiro")
@@ -101,8 +108,11 @@ class ConfigManager:
             raise ValueError("gatilho de ligar deve ser menor que o de desligar")
 
     def _salvar(self, dados):
+        persistentes = {
+            campo: valor for campo, valor in dados.items() if campo not in self.CAMPOS_TRANSITORIOS
+        }
         with open(self.ARQUIVO, "w") as arquivo:
-            json.dump(dados, arquivo)
+            json.dump(persistentes, arquivo)
 
     def obter(self, chave=None):
         if chave is not None:
@@ -125,6 +135,7 @@ class ConfigManager:
             dados_atualizados[campo] = self._validar_campo(campo, valor)
 
         self._validar_gatilhos(dados_atualizados)
-        self._salvar(dados_atualizados)
+        if any(campo not in self.CAMPOS_TRANSITORIOS for campo in novos_dados):
+            self._salvar(dados_atualizados)
         self.dados = dados_atualizados
         return self.obter()

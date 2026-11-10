@@ -1,16 +1,30 @@
 import json
 import uasyncio as asyncio
 
+from seguranca import comparar_segredos, validar_token_api
+
 
 class ServidorAPI:
     MAX_CORPO_BYTES = 2048
 
-    def __init__(self, config, estado, callback_bomba=None, reconectar_rede=None, porta=80):
+    def __init__(
+        self,
+        config,
+        estado,
+        callback_bomba=None,
+        reconectar_rede=None,
+        rede=None,
+        api_token=None,
+        porta=80,
+    ):
         self.cfg = config
         self.estado = estado
         self.porta = porta
         self.callback_bomba = callback_bomba
         self.reconectar_rede = reconectar_rede
+        validar_token_api(api_token)
+        self.api_token = api_token
+        self.rede = rede
 
     async def _enviar_resposta(self, writer, status, corpo=None):
         if corpo is None:
@@ -28,7 +42,7 @@ class ServidorAPI:
             + headers_conteudo
             + "Access-Control-Allow-Origin: *\r\n"
             + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-            + "Access-Control-Allow-Headers: *\r\n"
+            + "Access-Control-Allow-Headers: Content-Type, X-API-Key\r\n"
             + "Access-Control-Allow-Private-Network: true\r\n"
             + "Access-Control-Max-Age: 86400\r\n"
             + "Connection: close\r\n\r\n"
@@ -67,6 +81,7 @@ class ServidorAPI:
 
             metodo, rota = partes[0].upper(), partes[1]
             tamanho_corpo = 0
+            api_token = None
             while True:
                 linha_header = await reader.readline()
                 if not linha_header or linha_header in (b"\r\n", b"\n"):
@@ -83,9 +98,15 @@ class ServidorAPI:
                             writer, "400 Bad Request", {"erro": "Content-Length inválido"}
                         )
                         return
+                elif nome.lower() == "x-api-key":
+                    api_token = valor.strip()
 
             if metodo == "OPTIONS":
                 await self._enviar_resposta(writer, "204 No Content")
+                return
+
+            if not comparar_segredos(api_token, self.api_token):
+                await self._enviar_resposta(writer, "401 Unauthorized", {"erro": "Chave de API inválida"})
                 return
 
             if metodo == "GET" and rota == "/api/status":
@@ -94,10 +115,16 @@ class ServidorAPI:
                     "bomba_ligada": self.estado.get("bomba_ligada", False),
                     "configuracoes": self.cfg.obter_publica(),
                 }
+                if self.rede is not None:
+                    dados["rede"] = self.rede.status()
                 await self._enviar_resposta(writer, "200 OK", dados)
                 return
 
-            if metodo != "POST" or rota not in ("/api/config", "/api/bomba"):
+            if metodo != "POST" or rota not in (
+                "/api/config",
+                "/api/bomba",
+                "/api/rede/confirmar",
+            ):
                 await self._enviar_resposta(writer, "404 Not Found", {"erro": "Rota não encontrada"})
                 return
 
@@ -121,6 +148,10 @@ class ServidorAPI:
 
             if rota == "/api/config":
                 await self._atualizar_configuracao(writer, payload)
+                return
+
+            if rota == "/api/rede/confirmar":
+                await self._confirmar_rede(writer, payload)
                 return
 
             await self._acionar_bomba(writer, payload)
@@ -162,6 +193,14 @@ class ServidorAPI:
             print("Falha ao reconectar à rede após atualizar Wi-Fi:", erro)
 
     async def _acionar_bomba(self, writer, payload):
+        if not self.cfg.obter("controle_manual"):
+            await self._enviar_resposta(
+                writer,
+                "409 Conflict",
+                {"erro": "Acionamento manual indisponível no modo automático"},
+            )
+            return
+
         if "ligar" not in payload or not isinstance(payload["ligar"], bool):
             await self._enviar_resposta(
                 writer, "400 Bad Request", {"erro": "O campo 'ligar' deve ser true ou false"}
@@ -190,6 +229,23 @@ class ServidorAPI:
                 "bomba_ligada": self.estado.get("bomba_ligada", ligar),
             },
         )
+
+    async def _confirmar_rede(self, writer, payload):
+        if payload.get("confirmar") is not True or len(payload) != 1 or self.rede is None:
+            await self._enviar_resposta(
+                writer, "400 Bad Request", {"erro": "Confirmação de rede inválida"}
+            )
+            return
+
+        if not self.rede.confirmar_conexao_sta():
+            await self._enviar_resposta(
+                writer,
+                "409 Conflict",
+                {"erro": "Conecte-se ao IP do Wi-Fi do roteador antes de confirmar"},
+            )
+            return
+
+        await self._enviar_resposta(writer, "200 OK", {"sucesso": True, "ap_ativo": False})
 
     async def iniciar(self):
         await asyncio.start_server(self._handler, "0.0.0.0", self.porta)

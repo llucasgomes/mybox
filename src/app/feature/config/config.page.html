@@ -35,6 +35,104 @@
 
       <z-card class="border-slate-800 bg-slate-900/70 text-slate-100 shadow-xl">
         <z-card-header class="border-b border-slate-800">
+          <z-card-title class="text-white">Acesso ao dispositivo</z-card-title>
+          <z-card-description class="mt-1 text-slate-400">
+            Informe o endereço da API e a chave configurada no arquivo device_secrets.py do firmware. O endereço só é
+            salvo depois que a conexão é validada.
+          </z-card-description>
+        </z-card-header>
+        <z-card-content class="space-y-4 pt-5">
+          @if (deviceStatus(); as status) {
+          <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+            @if (status.rede?.ip_ap) {
+            <p>IP do ponto de acesso: <strong class="text-cyan-300">{{ status.rede.ip_ap }}</strong></p>
+            } @if (status.rede?.ip_sta) {
+            <p class="mt-1">IP do roteador: <strong class="text-cyan-300">{{ status.rede.ip_sta }}</strong></p>
+            } @if (status.rede?.ap_ativo) {
+            <p class="mt-2 text-xs text-amber-200">
+              O ponto de acesso permanece ativo como alternativa até a confirmação pelo IP do roteador.
+            </p>
+            }
+          </div>
+          }
+          <button
+            type="button"
+            class="text-left text-xs font-medium text-cyan-300 underline underline-offset-2 hover:text-cyan-200 disabled:opacity-50"
+            [disabled]="loadingStatus() || testingConnection()"
+            (click)="loadCurrentConfiguration()"
+          >
+            Atualizar status e endereços de rede
+          </button>
+
+          <div class="grid gap-2">
+            <label for="device-api-url" class="text-sm font-medium text-slate-200">Endereço da API</label>
+            <input
+              id="device-api-url"
+              z-input
+              type="url"
+              autocomplete="url"
+              [value]="apiBaseUrlInput()"
+              (input)="updateApiBaseUrl($event)"
+              placeholder="http://192.168.4.1/api"
+              class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+            />
+            <p class="text-xs text-slate-500">Use o endereço exibido no OLED, seguido de /api.</p>
+          </div>
+
+          <div class="grid gap-2">
+            <label for="device-api-token" class="text-sm font-medium text-slate-200">Chave da API</label>
+            <input
+              id="device-api-token"
+              z-input
+              type="password"
+              autocomplete="off"
+              [value]="apiTokenInput()"
+              (input)="updateApiToken($event)"
+              placeholder="Chave definida em device_secrets.py"
+              class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+            />
+            <p class="text-xs text-slate-500">
+              A chave fica salva no armazenamento local deste navegador. A API usa HTTP; use somente em uma rede
+              confiável.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            z-button
+            zType="outline"
+            class="w-full border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
+            [zLoading]="testingConnection()"
+            [disabled]="testingConnection()"
+            (click)="testAndSaveConnection()"
+          >
+            Testar e salvar endereço
+          </button>
+
+          @if (canConfirmNetwork()) {
+          <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <p class="text-sm text-amber-100">
+              O endereço testado corresponde ao IP do roteador. Confirme somente depois de conectar o celular à mesma
+              rede Wi-Fi.
+            </p>
+            <button
+              type="button"
+              z-button
+              zType="outline"
+              class="mt-3 w-full border-amber-500/40 bg-transparent text-amber-100 hover:bg-amber-500/10"
+              [zLoading]="testingConnection()"
+              [disabled]="testingConnection()"
+              (click)="confirmNetworkTransition()"
+            >
+              Confirmar e desativar ponto de acesso
+            </button>
+          </div>
+          }
+        </z-card-content>
+      </z-card>
+
+      <z-card class="border-slate-800 bg-slate-900/70 text-slate-100 shadow-xl">
+        <z-card-header class="border-b border-slate-800">
           <z-card-title class="text-white">Tamanho da caixa d'água</z-card-title>
           <z-card-description class="mt-1 text-slate-400">
             Selecione a capacidade e salve a alteração no dispositivo.
@@ -72,6 +170,44 @@
             <ng-icon name="lucideSave" size="18" aria-hidden="true" />
             Salvar tamanho da caixa
           </button>
+        </z-card-content>
+      </z-card>
+
+      <z-card class="border-slate-800 bg-slate-900/70 text-slate-100 shadow-xl">
+        <z-card-header class="border-b border-slate-800">
+          <z-card-title class="text-white">Modo de controle da bomba</z-card-title>
+          <z-card-description class="mt-1 text-slate-400">
+            No modo manual, os gatilhos automáticos não acionam o relé. O modo manual volta para automático ao reiniciar
+            o dispositivo.
+          </z-card-description>
+        </z-card-header>
+        <z-card-content class="pt-5">
+          <label
+            for="manual-control"
+            class="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+          >
+            <span>
+              <span class="block font-medium text-slate-100">
+                {{ manualControl() ? 'Controle manual' : 'Controle automático' }}
+              </span>
+              <span class="mt-1 block text-xs text-slate-400">
+                {{ manualControl() ? 'Comando manual habilitado na página inicial.' : 'A bomba segue os gatilhos de
+                nível.' }}
+              </span>
+            </span>
+            <input
+              id="manual-control"
+              type="checkbox"
+              role="switch"
+              class="size-5 accent-cyan-500"
+              [checked]="manualControl()"
+              [disabled]="loadingStatus() || savingControlMode()"
+              (change)="setManualControl($event)"
+            />
+          </label>
+          @if (savingControlMode()) {
+          <p class="mt-2 text-xs text-slate-400" role="status">Salvando modo de controle...</p>
+          }
         </z-card-content>
       </z-card>
 

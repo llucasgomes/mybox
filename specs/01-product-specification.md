@@ -26,6 +26,8 @@ capacidade da caixa e permite configurar parâmetros, rede Wi-Fi e comando da bo
 - Apresenta alertas de nível baixo e de nível próximo ao máximo.
 - Envia comandos de ligar/desligar bomba pela rota documentada em
   [API e integração](./04-api-and-device-contracts.md).
+- O comando manual só fica disponível quando o dispositivo confirma o modo manual.
+- Exibe o endereço do ponto de acesso e o endereço STA informados pelo dispositivo.
 
 ### Configuração (`/config`)
 
@@ -33,6 +35,10 @@ capacidade da caixa e permite configurar parâmetros, rede Wi-Fi e comando da bo
 - Permite selecionar a capacidade da caixa em litros e salvá-la no dispositivo.
 - Permite salvar individualmente os gatilhos percentuais e parâmetros do sensor.
 - Permite enviar SSID e senha Wi-Fi juntos.
+- Permite testar e salvar localmente um endereço de API e a chave do dispositivo.
+- Permite confirmar a transição de rede pelo endereço STA testado.
+- Permite alternar entre controle automático e manual; a seleção manual é volátil e volta
+  para automática após reiniciar o firmware.
 - Exibe feedback de sucesso/erro e validação dos campos.
 
 ## Regras de negócio conhecidas
@@ -45,12 +51,15 @@ capacidade da caixa e permite configurar parâmetros, rede Wi-Fi e comando da bo
   intervalo de contingência seguro.
 - A bomba não deve aparentar ter mudado de estado antes de a API confirmar o comando e o
   status ser atualizado.
+- No modo manual, o controle automático não pode reverter o comando da bomba.
+- O ponto de acesso permanece ativo durante a transição para STA e só é desligado após
+  confirmação autenticada feita pelo endereço STA.
 
 ## Fora do escopo confirmado
 
-Não presumir histórico, cadastro de múltiplos dispositivos, autenticação, controle manual
-de drenagem, funcionamento offline ou regras autônomas de acionamento. Especificar esses
-comportamentos somente após decisão de produto e confirmação do backend/firmware.
+Não presumir histórico, cadastro de múltiplos dispositivos, controle manual de drenagem,
+funcionamento offline ou regras autônomas de acionamento. Especificar esses comportamentos
+somente após decisão de produto e confirmação do backend/firmware.
 
 ## Critérios de aceite para mudanças de produto
 

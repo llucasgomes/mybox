@@ -8,7 +8,11 @@ class ControladorBomba:
         self._aplicar_estado(ligar)
         print("[MANUAL] Bomba", "ligada" if ligar else "desligada")
 
-    def atualizar_automaticamente(self, nivel_pct, gatilho_ligar_pct, gatilho_desligar_pct):
+    def atualizar(self, nivel_pct, gatilho_ligar_pct, gatilho_desligar_pct, controle_manual=False):
+        if controle_manual:
+            self._sincronizar_estado()
+            return
+
         if nivel_pct <= gatilho_ligar_pct and not self.rele.ligado:
             self._aplicar_estado(True)
             print("Bomba acionada: nível abaixo do gatilho de ligar.")

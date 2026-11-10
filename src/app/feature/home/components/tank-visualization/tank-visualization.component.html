@@ -20,9 +20,9 @@
     </button>
   </div>
 
-  <div class="flex min-h-[350px] items-center justify-center">
+  <div class="flex min-h-87.5 items-center justify-center">
     <svg
-      class="h-[340px] w-full max-w-[540px] sm:h-[370px]"
+      class="h-85 w-full max-w-135 sm:h-92.5"
       viewBox="0 0 540 370"
       role="img"
       aria-label="Ilustração técnica do reservatório com nível de água"
@@ -150,24 +150,30 @@
       <span class="text-sm font-bold text-sky-300 sm:text-base">{{ height() }} m</span>
     </div>
 
-    <div>
-      <button
-        type="button"
-        z-button
-        zType="outline"
-        class="w-full h-full rounded-2xl border-cyan-700 bg-cyan-950/60 text-cyan-200 hover:bg-cyan-900/70"
-        [disabled]="!canControl() || pumpBusy() || (level() >= 100 && pumpMode() === 'STANDBY')"
-        [attr.aria-label]="pumpMode() === 'STANDBY' ? 'Ligar bomba' : 'Desligar bomba'"
-        (click)="pumpAction.emit(pumpMode() === 'STANDBY' ? 'PUMPING' : 'STANDBY')"
-      >
-        @if (pumpMode() === 'STANDBY') {
-          <ng-icon name="lucidePlay" size="16" aria-hidden="true" />
-          Ligar bomba
-        } @else {
-          <ng-icon name="lucidePause" size="16" aria-hidden="true" />
-          Desligar bomba
-        }
-      </button>
+    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-2.5">
+      @if (manualControl()) {
+        <button
+          type="button"
+          z-button
+          zType="outline"
+          class="h-full w-full rounded-xl border-cyan-700 bg-cyan-950/60 text-cyan-200 hover:bg-cyan-900/70"
+          [disabled]="!canControl() || pumpBusy() || (level() >= 100 && pumpMode() === 'STANDBY')"
+          [attr.aria-label]="pumpMode() === 'STANDBY' ? 'Ligar bomba' : 'Desligar bomba'"
+          (click)="pumpAction.emit(pumpMode() === 'STANDBY' ? 'PUMPING' : 'STANDBY')"
+        >
+          @if (pumpMode() === 'STANDBY') {
+            <ng-icon name="lucidePlay" size="16" aria-hidden="true" />
+            Ligar bomba
+          } @else {
+            <ng-icon name="lucidePause" size="16" aria-hidden="true" />
+            Desligar bomba
+          }
+        </button>
+      } @else {
+        <span class="block text-[9px] font-bold uppercase text-slate-400">Controle da bomba</span>
+        <span class="mt-1 block text-sm font-bold text-emerald-300">Automático</span>
+        <span class="mt-1 block text-[10px] leading-tight text-slate-500">Gatilhos do dispositivo</span>
+      }
     </div>
   </div>
 </section>

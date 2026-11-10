@@ -11,11 +11,12 @@ em runtime.
 | `capacidade_litros` | `number` | Capacidade nominal da caixa em litros |
 | `gatilho_ligar_pct` | `number` | Percentual de acionamento da bomba |
 | `gatilho_desligar_pct` | `number` | Percentual de desligamento da bomba |
+| `controle_manual` | `boolean` | `true` para controle manual; volátil até reiniciar |
 | `dist_sensor_cheio_cm` | `number` | Leitura/distância associada ao reservatório cheio |
 | `dist_sensor_vazio_cm` | `number` | Leitura/distância associada ao reservatório vazio |
 | `delay_leitura_s` | `number` | Intervalo de leitura em segundos |
 | `SSID_ROTEADOR` | `string` | SSID configurado no dispositivo |
-| `SENHA_ROTEADOR` | `string` | Senha configurada no dispositivo |
+| `SENHA_ROTEADOR` | `string` | Senha configurada; omitida/limpa nas respostas públicas |
 
 ## Status
 
@@ -24,6 +25,11 @@ interface DeviceStatus {
   bomba_ligada: boolean;
   configuracoes: DeviceConfiguration;
   nivel_atual_pct: number;
+  rede?: {
+    ip_ap: string | null;
+    ip_sta: string | null;
+    ap_ativo: boolean;
+  };
 }
 ```
 
@@ -40,6 +46,9 @@ interface LigarBomba {
 
 Valores `true` e `false` representam pedido de ligar e desligar. O formato efetivo aceito
 deve permanecer alinhado com o firmware.
+
+`controle_manual` permite comandos de bomba somente quando está `true`. O firmware não
+persiste esse modo e inicializa em automático após reinício.
 
 ## Caixa catalogada
 

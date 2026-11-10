@@ -20,6 +20,8 @@ alteração; execute a suíte ampla quando o escopo ou o resultado exigir.
 - **Serviços:** método HTTP, rota, payload e propagação de erro.
 - **Componentes/formulários:** validação, estados desabilitados, ações e mensagens.
 - **Supervisão:** mapeamento do status, cálculo de volume, polling e comando da bomba.
+- **Firmware:** autenticação da API, validação de payload/configuração, modo manual/automático
+  e transição de rede AP/STA.
 - **E2E:** navegação e fluxos observáveis do operador, com respostas HTTP simuladas e sem
   depender de dispositivo físico.
 
