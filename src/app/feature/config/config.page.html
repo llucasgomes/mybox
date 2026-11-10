@@ -245,30 +245,15 @@
           <form [formGroup]="wifiForm" class="space-y-4" (ngSubmit)="saveWifi()">
             <div class="grid gap-2">
               <label for="wifi-ssid" class="text-sm font-medium text-slate-200">Nome da rede (SSID)</label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="wifi-ssid"
-                  z-input
-                  type="text"
-                  formControlName="ssid"
-                  autocomplete="off"
-                  placeholder="Ex.: MinhaRede"
-                  class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
-                />
-                <button
-                  type="button"
-                  z-button
-                  zType="outline"
-                  zSize="icon"
-                  aria-label="Salvar credenciais do Wi-Fi"
-                  [zLoading]="savingWifi()"
-                  [disabled]="wifiForm.invalid || savingWifi()"
-                  class="size-10 shrink-0 border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
-                  (click)="saveWifi()"
-                >
-                  <ng-icon name="lucideSave" size="18" aria-hidden="true" />
-                </button>
-              </div>
+              <input
+                id="wifi-ssid"
+                z-input
+                type="text"
+                formControlName="ssid"
+                autocomplete="off"
+                placeholder="Ex.: MinhaRede"
+                class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+              />
               @if (wifiForm.controls.ssid.touched && wifiForm.controls.ssid.invalid) {
               <p class="text-xs text-rose-300">Informe o nome da rede Wi-Fi.</p>
               }
@@ -276,29 +261,15 @@
 
             <div class="grid gap-2">
               <label for="wifi-password" class="text-sm font-medium text-slate-200">Senha da rede</label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="wifi-password"
-                  z-input
-                  type="password"
-                  formControlName="senha"
-                  autocomplete="new-password"
-                  placeholder="Senha do Wi-Fi"
-                  class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
-                />
-                <button
-                  type="submit"
-                  z-button
-                  zType="outline"
-                  zSize="icon"
-                  aria-label="Salvar credenciais do Wi-Fi"
-                  [zLoading]="savingWifi()"
-                  [disabled]="wifiForm.invalid || savingWifi()"
-                  class="size-10 shrink-0 border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
-                >
-                  <ng-icon name="lucideSave" size="18" aria-hidden="true" />
-                </button>
-              </div>
+              <input
+                id="wifi-password"
+                z-input
+                type="password"
+                formControlName="senha"
+                autocomplete="new-password"
+                placeholder="Senha do Wi-Fi"
+                class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+              />
               @if (wifiForm.controls.senha.touched && wifiForm.controls.senha.invalid) {
               <p class="text-xs text-rose-300">Informe a senha da rede Wi-Fi.</p>
               }
@@ -308,6 +279,17 @@
               As credenciais são enviadas juntas para o dispositivo. O app não carrega nem exibe a senha atualmente
               salva.
             </p>
+            <button
+              type="submit"
+              z-button
+              zType="outline"
+              class="w-full border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
+              [zLoading]="savingWifi()"
+              [disabled]="wifiForm.invalid || savingWifi()"
+            >
+              <ng-icon name="lucideSave" size="18" aria-hidden="true" />
+              Enviar credenciais Wi-Fi
+            </button>
           </form>
         </z-card-content>
       </z-card>
