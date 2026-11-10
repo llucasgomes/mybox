@@ -1,0 +1,83 @@
+<section
+  class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl sm:p-6"
+  aria-labelledby="catalog-title"
+>
+  <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+    <div>
+      <h2 id="catalog-title" class="text-base font-bold text-white sm:text-lg">
+        Catálogo técnico — dimensões em metros
+      </h2>
+      <p class="mt-1 text-xs text-slate-400">Selecione uma linha para carregar os parâmetros do reservatório.</p>
+    </div>
+    <label for="catalog-search" class="sr-only">Filtrar catálogo</label>
+    <input
+      id="catalog-search"
+      type="search"
+      placeholder="Filtrar capacidade ou código..."
+      class="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none sm:w-64"
+      [value]="searchQuery()"
+      (input)="onSearchChange($event)"
+    />
+  </div>
+
+  <div class="overflow-x-auto rounded-2xl border border-slate-800">
+    <table class="w-full border-collapse text-left font-mono text-xs">
+      <thead class="border-b border-slate-800 bg-slate-950 text-slate-400">
+        <tr>
+          <th scope="col" class="p-3">Capacidade</th>
+          <th scope="col" class="p-3">Código caixa</th>
+          <th scope="col" class="p-3 text-center text-cyan-400">A (alt. c/ tampa)</th>
+          <th scope="col" class="p-3 text-center text-cyan-400">B (alt. s/ tampa)</th>
+          <th scope="col" class="p-3 text-center text-cyan-400">C (diâm. c/ tampa)</th>
+          <th scope="col" class="p-3 text-center text-cyan-400">D (diâm. s/ tampa)</th>
+          <th scope="col" class="p-3 text-center text-cyan-400">E (diâm. base)</th>
+          <th scope="col" class="p-3">Código tampa</th>
+          <th scope="col" class="p-3 text-right">Ação</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800/60">
+        @for (spec of specs(); track spec.cap) {
+          <tr
+            [class]="
+              selectedModel().cap === spec.cap
+                ? 'cursor-pointer bg-cyan-950/60 font-semibold text-slate-300 transition-colors'
+                : 'cursor-pointer text-slate-300 transition-colors hover:bg-slate-800/40'
+            "
+            (click)="modelSelected.emit(spec)"
+          >
+            <td class="whitespace-nowrap p-3 font-bold text-white">{{ formatNumber(spec.cap) }} L</td>
+            <td class="whitespace-nowrap p-3 text-slate-400">{{ spec.code }}</td>
+            <td class="p-3 text-center" [class.text-cyan-300]="selectedModel().cap === spec.cap">
+              {{ formatNumber(spec.a, 2) }} m
+            </td>
+            <td class="p-3 text-center" [class.text-cyan-300]="selectedModel().cap === spec.cap">
+              {{ formatNumber(spec.b, 2) }} m
+            </td>
+            <td class="p-3 text-center" [class.text-cyan-300]="selectedModel().cap === spec.cap">
+              {{ formatNumber(spec.c, 2) }} m
+            </td>
+            <td class="p-3 text-center" [class.text-cyan-300]="selectedModel().cap === spec.cap">
+              {{ formatNumber(spec.d, 2) }} m
+            </td>
+            <td class="p-3 text-center" [class.text-cyan-300]="selectedModel().cap === spec.cap">
+              {{ formatNumber(spec.e, 2) }} m
+            </td>
+            <td class="whitespace-nowrap p-3 text-slate-400">{{ spec.lidCode }}</td>
+            <td class="whitespace-nowrap p-3 text-right">
+              <span
+                [class.text-cyan-400]="selectedModel().cap === spec.cap"
+                [class.text-slate-500]="selectedModel().cap !== spec.cap"
+              >
+                {{ selectedModel().cap === spec.cap ? 'Ativo' : 'Selecionar' }}
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td class="p-5 text-center text-slate-400" colspan="9">Nenhum reservatório encontrado para essa busca.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

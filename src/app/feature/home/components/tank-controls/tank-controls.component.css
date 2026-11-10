@@ -1,0 +1,9 @@
+:host {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}

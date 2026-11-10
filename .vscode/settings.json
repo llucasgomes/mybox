@@ -1,0 +1,19 @@
+{
+  "explorer.compactFolders": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll.eslint": "explicit"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // "typescript.preferences.autoImportFileExcludePatterns": [
+  //   "@ionic/angular/types/ionic-angular-lazy.d.ts",
+  //   "@ionic/angular/types/ionic-angular-common.d.ts"
+  // ]
+}

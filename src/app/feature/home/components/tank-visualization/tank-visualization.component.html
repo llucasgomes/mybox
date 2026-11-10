@@ -1,0 +1,173 @@
+<section
+  class="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl sm:p-6"
+  aria-labelledby="tank-profile-title"
+>
+  <div class="mb-2 flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+    <div class="flex items-center gap-2">
+      <h2 id="tank-profile-title" class="text-xs font-bold uppercase tracking-wider text-cyan-400">
+        Perfil técnico de corte
+      </h2>
+      <span class="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-200">
+        {{ formatNumber(capacity()) }} L
+      </span>
+    </div>
+    <button
+      type="button"
+      class="text-left text-xs text-slate-400 transition-colors hover:text-cyan-300"
+      (click)="annotationsToggle.emit()"
+    >
+      {{ showAnnotations() ? 'Ocultar' : 'Exibir' }} cotas
+    </button>
+  </div>
+
+  <div class="flex min-h-[350px] items-center justify-center">
+    <svg
+      class="h-[340px] w-full max-w-[540px] sm:h-[370px]"
+      viewBox="0 0 540 370"
+      role="img"
+      aria-label="Ilustração técnica do reservatório com nível de água"
+    >
+      <defs>
+        <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity=".95" />
+          <stop offset="35%" stop-color="#0284c7" stop-opacity=".92" />
+          <stop offset="100%" stop-color="#082f49" />
+        </linearGradient>
+        <linearGradient id="tankGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#090d16" stop-opacity=".9" />
+          <stop offset="50%" stop-color="#475569" stop-opacity=".12" />
+          <stop offset="100%" stop-color="#090d16" stop-opacity=".9" />
+        </linearGradient>
+        <clipPath id="tankClip">
+          <polygon
+            points="184,278 356,278 362,234 364,232 372,192 374,190 384,142 386,140 394,92 146,92 154,140 156,142 166,190 168,192 176,232 178,234"
+          />
+        </clipPath>
+      </defs>
+
+      <g [attr.opacity]="showAnnotations() ? 1 : 0" class="transition-opacity">
+        <g fill="none" stroke="#38bdf8" stroke-dasharray="3,3" stroke-width="1.2">
+          <line x1="124" y1="42" x2="416" y2="42" />
+          <line x1="146" y1="68" x2="394" y2="68" />
+          <line x1="184" y1="305" x2="356" y2="305" />
+          <line x1="86" y1="52" x2="86" y2="278" />
+          <line x1="440" y1="92" x2="440" y2="278" />
+        </g>
+        <g fill="#7dd3fc" font-family="monospace" font-size="10.5" font-weight="700" text-anchor="middle">
+          <text x="270" y="36">C: {{ formatNumber(model().c, 2) }}m</text>
+          <text x="270" y="62">D: {{ formatNumber(model().d, 2) }}m</text>
+          <text x="270" y="322">E: {{ formatNumber(model().e, 2) }}m</text>
+          <text x="58" y="169">A: {{ formatNumber(model().a, 2) }}m</text>
+          <text x="480" y="189">B: {{ formatNumber(model().b, 2) }}m</text>
+        </g>
+      </g>
+
+      <g>
+        <rect x="110" y="70" width="40" height="10" rx="3" fill="#1e293b" stroke="#38bdf8" />
+        <path d="M140 80v20" stroke="#38bdf8" stroke-linecap="round" stroke-width="4" />
+        @if (pumpMode() === 'PUMPING') {
+          <line
+            x1="140"
+            y1="82"
+            x2="140"
+            y2="240"
+            stroke="#7dd3fc"
+            stroke-dasharray="6,4"
+            stroke-width="3"
+            class="flow-line"
+          />
+        }
+        <rect x="360" y="260" width="36" height="12" rx="3" fill="#1e293b" stroke="#38bdf8" />
+        @if (pumpMode() === 'DRAINING') {
+          <line
+            x1="396"
+            y1="266"
+            x2="430"
+            y2="266"
+            stroke="#38bdf8"
+            stroke-dasharray="5,3"
+            stroke-width="3"
+            class="flow-line"
+          />
+        }
+      </g>
+
+      <ellipse cx="270" cy="278" rx="86" ry="7" fill="#020617" stroke="#0284c7" stroke-width="2" />
+      <polygon
+        points="184,278 356,278 362,234 364,232 372,192 374,190 384,142 386,140 394,92 146,92 154,140 156,142 166,190 168,192 176,232 178,234"
+        fill="#030712"
+        stroke="#0284c7"
+        stroke-width="2"
+      />
+      <g clip-path="url(#tankClip)">
+        <g [attr.transform]="'translate(0, ' + waterTranslateY() + ')'">
+          <rect x="130" y="0" width="280" height="200" fill="url(#waterGradient)" />
+          <path
+            d="M0 0 Q60 9 120 0 T240 0 T360 0 T480 0 T600 0V22H0Z"
+            fill="#7dd3fc"
+            fill-opacity=".4"
+            class="wave-front"
+          />
+          <path
+            d="M0 4 Q60 -5 120 4 T240 4 T360 4 T480 4 T600 4V22H0Z"
+            fill="#38bdf8"
+            fill-opacity=".8"
+            class="wave-back"
+          />
+        </g>
+      </g>
+      <g fill="none" stroke="#0ea5e9" stroke-opacity=".65">
+        <line x1="177" y1="233" x2="363" y2="233" />
+        <line x1="167" y1="191" x2="373" y2="191" />
+        <line x1="155" y1="141" x2="385" y2="141" />
+      </g>
+      <polygon
+        points="184,278 356,278 362,234 364,232 372,192 374,190 384,142 386,140 394,92 146,92 154,140 156,142 166,190 168,192 176,232 178,234"
+        fill="url(#tankGradient)"
+        pointer-events="none"
+      />
+      <g>
+        <rect x="124" y="85" width="292" height="9" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="1.8" />
+        <polygon points="126,85 270,52 414,85" fill="#0f172a" stroke="#38bdf8" stroke-width="2" />
+        <line x1="270" y1="52" x2="270" y2="85" stroke="#38bdf8" stroke-width="2" />
+        <line x1="270" y1="52" x2="198" y2="85" stroke="#38bdf8" stroke-dasharray="3,2" />
+        <line x1="270" y1="52" x2="342" y2="85" stroke="#38bdf8" stroke-dasharray="3,2" />
+      </g>
+    </svg>
+  </div>
+
+  <div class="grid grid-cols-2 gap-2.5 border-t border-slate-800 pt-3 text-center font-mono sm:grid-cols-4">
+    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-2.5">
+      <span class="block text-[9px] font-bold uppercase text-slate-400">Volume líquido</span>
+      <span class="text-sm font-bold text-cyan-300 sm:text-base">{{ formatNumber(liters()) }} L</span>
+    </div>
+    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-2.5">
+      <span class="block text-[9px] font-bold uppercase text-slate-400">Nível</span>
+      <span class="text-sm font-bold text-white sm:text-base">{{ formatNumber(level()) }}%</span>
+    </div>
+    <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-2.5">
+      <span class="block text-[9px] font-bold uppercase text-slate-400">Coluna de água</span>
+      <span class="text-sm font-bold text-sky-300 sm:text-base">{{ height() }} m</span>
+    </div>
+
+    <div>
+      <button
+        type="button"
+        z-button
+        zType="outline"
+        class="w-full h-full rounded-2xl border-cyan-700 bg-cyan-950/60 text-cyan-200 hover:bg-cyan-900/70"
+        [disabled]="!canControl() || pumpBusy() || (level() >= 100 && pumpMode() === 'STANDBY')"
+        [attr.aria-label]="pumpMode() === 'STANDBY' ? 'Ligar bomba' : 'Desligar bomba'"
+        (click)="pumpAction.emit(pumpMode() === 'STANDBY' ? 'PUMPING' : 'STANDBY')"
+      >
+        @if (pumpMode() === 'STANDBY') {
+          <ng-icon name="lucidePlay" size="16" aria-hidden="true" />
+          Ligar bomba
+        } @else {
+          <ng-icon name="lucidePause" size="16" aria-hidden="true" />
+          Desligar bomba
+        }
+      </button>
+    </div>
+  </div>
+</section>

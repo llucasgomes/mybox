@@ -1,0 +1,40 @@
+:host {
+  display: block;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-line {
+  animation: flow-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.wave-front {
+  animation: wave-front 3.2s linear infinite;
+}
+
+.wave-back {
+  animation: wave-back 4.5s linear infinite;
+}
+
+@keyframes flow-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@keyframes wave-front {
+  to {
+    transform: translateX(-240px);
+  }
+}
+
+@keyframes wave-back {
+  from {
+    transform: translateX(-240px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
