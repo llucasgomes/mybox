@@ -24,6 +24,8 @@
 - Wi-Fi: campos SSID e senha enviados juntos.
 - Acesso à API: endereço base e chave são testados antes de salvar localmente; o botão de
   confirmação da rede só aparece se o host testado corresponder ao IP STA informado.
+- A chave da API pode ser preenchida pela leitura de um QR Code; após a leitura, a conexão
+  deve ser testada antes de salvar a chave.
 - Modo de controle: switch acessível permite selecionar automático/manual e fornece
   feedback de salvamento.
 - A tela inicial só mostra controles da bomba no modo manual; em automático, mostra o

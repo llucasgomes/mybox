@@ -81,19 +81,34 @@
 
           <div class="grid gap-2">
             <label for="device-api-token" class="text-sm font-medium text-slate-200">Chave da API</label>
-            <input
-              id="device-api-token"
-              z-input
-              type="password"
-              autocomplete="off"
-              [value]="apiTokenInput()"
-              (input)="updateApiToken($event)"
-              placeholder="Chave definida em device_secrets.py"
-              class="h-10 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
-            />
+            <div class="flex items-center gap-2">
+              <input
+                id="device-api-token"
+                z-input
+                type="password"
+                autocomplete="off"
+                [value]="apiTokenInput()"
+                (input)="updateApiToken($event)"
+                placeholder="Chave definida em device_secrets.py"
+                class="h-10 min-w-0 flex-1 border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+              />
+              <button
+                type="button"
+                z-button
+                zType="outline"
+                zSize="icon"
+                aria-label="Ler chave da API por QR Code"
+                title="Ler chave da API por QR Code"
+                [disabled]="scanningApiKey() || testingConnection()"
+                class="size-10 shrink-0 border-slate-700 bg-slate-800 text-cyan-300 hover:bg-slate-700"
+                (click)="scanApiKey()"
+              >
+                <ng-icon name="lucideCamera" size="18" aria-hidden="true" />
+              </button>
+            </div>
             <p class="text-xs text-slate-500">
-              A chave fica salva no armazenamento local deste navegador. A API usa HTTP; use somente em uma rede
-              confiável.
+              Escaneie um QR Code que contenha somente a chave. Depois, teste a conexão para salvá-la. A chave fica no
+              armazenamento local deste navegador; use a API somente em uma rede confiável.
             </p>
           </div>
 

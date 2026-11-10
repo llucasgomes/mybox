@@ -3,9 +3,14 @@ import type { OnInit } from '@angular/core';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import {
+  CapacitorBarcodeScanner,
+  CapacitorBarcodeScannerCameraDirection,
+  CapacitorBarcodeScannerTypeHint,
+} from '@capacitor/barcode-scanner';
 import { IonContent } from '@ionic/angular';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLoaderCircle, lucideSave, lucideWifi } from '@ng-icons/lucide';
+import { lucideCamera, lucideLoaderCircle, lucideSave, lucideWifi } from '@ng-icons/lucide';
 import { firstValueFrom } from 'rxjs';
 
 import { TANK_SPECS } from '@/core/consts/tank.const';
@@ -54,6 +59,7 @@ type ConfigurationFieldKey = Exclude<
   viewProviders: [
     provideIcons({
       lucideLoaderCircle,
+      lucideCamera,
       lucideSave,
       lucideWifi,
     }),
@@ -69,6 +75,7 @@ export class ConfigPage implements OnInit {
   readonly selectedTank = this.tankSelection.selectedModel;
   readonly apiBaseUrlInput = signal(this.api.apiBaseUrl);
   readonly apiTokenInput = signal(this.api.apiToken);
+  readonly scanningApiKey = signal(false);
   readonly deviceStatus = signal<DeviceStatus | null>(null);
   readonly testedConnection = signal<DeviceStatus | null>(null);
   readonly testingConnection = signal(false);
@@ -248,6 +255,39 @@ export class ConfigPage implements OnInit {
     if (target instanceof HTMLInputElement) {
       this.apiTokenInput.set(target.value);
       this.testedConnection.set(null);
+    }
+  }
+
+  async scanApiKey(): Promise<void> {
+    if (this.scanningApiKey() || this.testingConnection()) return;
+
+    this.scanningApiKey.set(true);
+    try {
+      const result = await CapacitorBarcodeScanner.scanBarcode({
+        hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
+        cameraDirection: CapacitorBarcodeScannerCameraDirection.BACK,
+        scanInstructions: 'Aponte a câmera para o QR Code da chave da API.',
+        cancelButtonAccessibilityLabel: 'Cancelar leitura',
+      });
+      const token = result.ScanResult.trim();
+      if (token.length < 32) {
+        this.sonner.error('QR Code inválido.', {
+          description: 'O QR Code deve conter a chave da API, com pelo menos 32 caracteres.',
+        });
+        return;
+      }
+
+      this.apiTokenInput.set(token);
+      this.testedConnection.set(null);
+      this.sonner.success('Chave lida. Teste a conexão para validar e salvar.');
+    } catch (error: unknown) {
+      if (error instanceof Error && /cancel(?:led|ed)/i.test(error.message)) return;
+
+      this.sonner.error('Não foi possível ler o QR Code da chave.', {
+        description: error instanceof Error ? error.message : 'Verifique a permissão de uso da câmera.',
+      });
+    } finally {
+      this.scanningApiKey.set(false);
     }
   }
 
